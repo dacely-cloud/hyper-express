@@ -1,4 +1,4 @@
-import * as uWebsockets from 'uWebSockets.js';
+import * as uWebsockets from '@dacely-cloud/uwebsockets.js';
 import { EventEmitter } from "events";
 import { Readable, Writable } from 'stream';
 import TypedEmitter from 'typed-emitter';
@@ -17,6 +17,30 @@ type Events = {
 }
 
 export class Websocket<TUserData = unknown> extends (EventEmitter as new () => TypedEmitter<Events>) {
+    /**
+     * Registers an event listener for the specified event.
+     * @param event The event name
+     * @param listener The callback function
+     */
+    on<K extends keyof Events>(event: K, listener: Events[K]): this;
+    on(event: string | symbol, listener: (...args: any[]) => void): this;
+
+    /**
+     * Registers a one-time event listener for the specified event.
+     * @param event The event name
+     * @param listener The callback function
+     */
+    once<K extends keyof Events>(event: K, listener: Events[K]): this;
+    once(event: string | symbol, listener: (...args: any[]) => void): this;
+
+    /**
+     * Removes an event listener for the specified event.
+     * @param event The event name
+     * @param listener The callback function to remove
+     */
+    off<K extends keyof Events>(event: K, listener: Events[K]): this;
+    off(event: string | symbol, listener: (...args: any[]) => void): this;
+
     /**
      * Alias of uWS.cork() method. Accepts a callback with multiple operations for network efficiency.
      *

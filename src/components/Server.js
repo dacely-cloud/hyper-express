@@ -1,7 +1,7 @@
 'use strict';
 const path = require('path');
 const fs = require('fs/promises');
-const uWebSockets = require('uWebSockets.js');
+const uWebSockets = require('@dacely-cloud/uwebsockets.js');
 
 const Route = require('./router/Route.js');
 const Router = require('./router/Router.js');
@@ -26,6 +26,8 @@ class Server extends Router {
         max_body_buffer: 16 * 1024,
         max_body_length: 250 * 1024,
         streaming: {},
+        idle_timeout: 30,      // HTTP idle timeout in seconds (default: 30)
+        response_timeout: 30,  // HTTP response timeout in seconds (default: 30)
     };
 
     /**
@@ -50,6 +52,8 @@ class Server extends Router {
      * @param {Object} options.streaming Global content streaming options.
      * @param {import('stream').ReadableOptions=} options.streaming.readable Global content streaming options for Readable streams.
      * @param {import('stream').WritableOptions=} options.streaming.writable Global content streaming options for Writable streams.
+     * @param {Number=} options.idle_timeout HTTP idle timeout in seconds. Connections idle longer than this are closed. Default: 30
+     * @param {Number=} options.response_timeout HTTP response timeout in seconds. Responses taking longer than this during backpressure are closed. Default: 30
      */
     constructor(options = {}) {
         // Only accept object as a parameter type for options
@@ -77,10 +81,34 @@ class Server extends Router {
                 this.#options.key_file_name = to_forward_slashes(path.resolve(key_file_name));
 
                 // Create an SSL app with the provided SSL options
-                this.#uws_instance = uWebSockets.SSLApp(this.#options);
+                this.#uws_instance = uWebSockets.SSLApp({
+                    key_file_name: this.#options.key_file_name,
+                    cert_file_name: this.#options.cert_file_name,
+                    ca_file_name: this.#options.ca_file_name,
+                    passphrase: this.#options.passphrase,
+                    dh_params_file_name: this.#options.dh_params_file_name,
+                    ssl_prefer_low_memory_usage: this.#options.ssl_prefer_low_memory_usage,
+                    ssl_ciphers: this.#options.ssl_ciphers //'EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH',
+                });
             } else {
                 // Create a non-SSL app since no SSL options were provided
-                this.#uws_instance = uWebSockets.App(this.#options);
+                this.#uws_instance = uWebSockets.App({
+                    key_file_name: this.#options.key_file_name,
+                    cert_file_name: this.#options.cert_file_name,
+                    ca_file_name: this.#options.ca_file_name,
+                    passphrase: this.#options.passphrase,
+                    dh_params_file_name: this.#options.dh_params_file_name,
+                    ssl_prefer_low_memory_usage: this.#options.ssl_prefer_low_memory_usage,
+                    ssl_ciphers: this.#options.ssl_ciphers //'EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH',
+                }); //this.#options);
+            }
+
+            // Apply HTTP timeout settings
+            if (typeof this.#options.idle_timeout === 'number') {
+                this.#uws_instance.setIdleTimeout(this.#options.idle_timeout);
+            }
+            if (typeof this.#options.response_timeout === 'number') {
+                this.#uws_instance.setResponseTimeout(this.#options.response_timeout);
             }
         } catch (error) {
             // Convert all the options to string values for logging purposes
@@ -602,6 +630,64 @@ class Server extends Router {
      */
     get middlewares() {
         return this.#middlewares;
+    }
+
+    /* HTTP Timeout Configuration */
+
+    /**
+     * Sets the HTTP idle timeout in seconds.
+     * Connections idle longer than this will be closed.
+     * @param {Number} seconds Timeout in seconds
+     * @returns {Server} Returns this for chaining
+     */
+    setIdleTimeout(seconds) {
+        this.#options.idle_timeout = seconds;
+        this.#uws_instance.setIdleTimeout(seconds);
+        return this;
+    }
+
+    /**
+     * Sets the HTTP response timeout in seconds.
+     * Responses taking longer than this during backpressure will be closed.
+     * @param {Number} seconds Timeout in seconds
+     * @returns {Server} Returns this for chaining
+     */
+    setResponseTimeout(seconds) {
+        this.#options.response_timeout = seconds;
+        this.#uws_instance.setResponseTimeout(seconds);
+        return this;
+    }
+
+    /**
+     * Gets the current HTTP idle timeout in seconds.
+     * @returns {Number}
+     */
+    getIdleTimeout() {
+        return this.#uws_instance.getIdleTimeout();
+    }
+
+    /**
+     * Gets the current HTTP response timeout in seconds.
+     * @returns {Number}
+     */
+    getResponseTimeout() {
+        return this.#uws_instance.getResponseTimeout();
+    }
+
+    /**
+     * HTTP idle timeout in seconds.
+     * @returns {Number}
+     */
+    get idle_timeout() {
+        return this.getIdleTimeout();
+    }
+
+    /**
+     * HTTP response timeout in seconds.
+     * @returns {Number}
+     */
+    get response_timeout() {
+        return this.getResponseTimeout();
     }
 }
 

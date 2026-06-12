@@ -531,8 +531,51 @@ class Response {
                 // NOTE: This method is completely undocumented by uWS but exists in the source code to solve the problem of no body being sent with a custom content-length
                 this._raw_response.endWithoutBody(content_length, close_connection);
             } else {
-                // Send the response with the uWS.HttpResponse.end(body, close_connection) method as we have some body data
-                this._raw_response.end(body, close_connection);
+                // Convert body to Buffer if needed for consistent handling
+                const bodyBuffer = typeof body === 'string' ? Buffer.from(body) : (body || Buffer.alloc(0));
+                const bodySize = bodyBuffer.length;
+
+                // Capture the write offset BEFORE tryEnd - needed for correct slicing on backpressure
+                const write_offset = this.write_offset;
+
+                // Always use tryEnd with backpressure handling for reliability
+                // This prevents socket closure when write buffer overflows for large payloads
+                // For small payloads, tryEnd succeeds immediately (fast path)
+                const [ok, done] = this._raw_response.tryEnd(bodyBuffer, bodySize);
+
+                if (done) {
+                    // Response fully sent - continue to completion logic below
+                } else if (!ok) {
+                    // Backpressure - use drain handler (which properly manages onWritable)
+                    this.drain((offset) => {
+                        // Check if response was aborted
+                        if (this.completed) return true;
+
+                        // Calculate remaining bytes: offset = total written, write_offset = before we started
+                        // This gives us the correct position to slice from
+                        const remaining = bodyBuffer.subarray(offset - write_offset);
+                        const [flushed, finished] = this._raw_response.tryEnd(remaining, bodySize);
+
+                        if (finished) {
+                            // Emit the 'finish' event to signify that the response has been sent
+                            if (this._writable && !this._streaming) this.emit('finish', this._wrapped_request, this);
+
+                            // Mark request as completed
+                            this.completed = true;
+
+                            // Decrement the pending request count
+                            this.route.app._resolve_pending_request();
+
+                            // Emit the 'close' event to signify that the response has been completed
+                            if (this._writable) this.emit('close', this._wrapped_request, this);
+                        }
+
+                        return flushed;
+                    });
+
+                    // Don't mark as completed yet - will be marked in onWritable callback
+                    return this;
+                }
             }
 
             // Emit the 'finish' event to signify that the response has been sent without streaming
@@ -739,13 +782,114 @@ class Response {
     }
 
     /**
+     * Estimate if an object is likely to produce a very large JSON string (>1MB).
+     * Uses conservative heuristics - only triggers for truly large payloads.
+     * @private
+     * @param {any} body - Object to estimate
+     * @returns {boolean} - True if likely very large
+     */
+    _isLikelyLargePayload(body) {
+        if (!body || typeof body !== 'object') return false;
+
+        // Only use worker threads for RPC batch responses with large result arrays
+        // This is the main case causing event loop blocking
+        if (body.result && Array.isArray(body.result) && body.result.length >= 50) {
+            // Check if results contain complex objects (like blocks with transactions)
+            const first = body.result[0];
+            if (first && typeof first === 'object' && Object.keys(first).length > 10) {
+                return true;
+            }
+        }
+
+        // Direct large arrays (200+ items with complex objects)
+        if (Array.isArray(body) && body.length >= 200) {
+            const first = body[0];
+            if (first && typeof first === 'object') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * This method is an alias of send() method except it accepts an object and automatically stringifies the passed payload object.
+     * For large payloads, uses async worker-based serialization to avoid blocking the event loop.
+     * For streaming large responses, uses proper backpressure handling to prevent socket closures.
      *
      * @param {Object} body JSON body
-     * @returns {Boolean} Boolean
+     * @returns {Boolean|Promise} Boolean or Promise for large payloads
      */
     json(body) {
-        return this.header('content-type', 'application/json', true).send(JSON.stringify(body));
+        this.header('content-type', 'application/json', true);
+
+        // For potentially large payloads, use async serialization to avoid blocking event loop
+        if (this._isLikelyLargePayload(body)) {
+            return this._jsonAsync(body);
+        }
+
+        // For small payloads, use synchronous serialization (fast path)
+        const jsonString = JSON.stringify(body);
+        return this._sendJsonString(jsonString);
+    }
+
+    /**
+     * Async JSON serialization using worker threads for large payloads.
+     * @private
+     * @param {Object} body - Object to serialize
+     * @returns {Promise}
+     */
+    async _jsonAsync(body) {
+        // Check if response is already completed before async work
+        if (this.completed) return this;
+
+        const JsonSerializerPool = require('../../shared/JsonSerializerPool.js');
+
+        try {
+            const jsonString = await JsonSerializerPool.stringify(body);
+
+            // Check again after async serialization - client may have disconnected
+            if (this.completed) return this;
+
+            return this._sendJsonString(jsonString);
+        } catch (error) {
+            // Check before fallback
+            if (this.completed) return this;
+
+            // Fallback to sync on worker error
+            const jsonString = JSON.stringify(body);
+            return this._sendJsonString(jsonString);
+        }
+    }
+
+    /**
+     * Send a pre-serialized JSON string with proper backpressure handling.
+     * @private
+     * @param {string} jsonString - Serialized JSON string
+     * @returns {Boolean|Promise}
+     */
+    _sendJsonString(jsonString) {
+        const LARGE_PAYLOAD_THRESHOLD = 1024 * 1024; // 1MB
+
+        // For large payloads, use streaming with proper backpressure handling
+        if (jsonString.length > LARGE_PAYLOAD_THRESHOLD) {
+            const buffer = Buffer.from(jsonString);
+            const { Readable } = require('stream');
+
+            // Create a readable stream from the buffer
+            const readable = new Readable({
+                read() {
+                    this.push(buffer);
+                    this.push(null);
+                }
+            });
+
+            // Use streaming with total size for Content-Length header
+            return this.stream(readable, buffer.length);
+        }
+
+        // For small payloads, use regular send
+        return this.send(jsonString);
     }
 
     /**

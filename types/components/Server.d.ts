@@ -1,5 +1,5 @@
 import { ReadableOptions, WritableOptions } from 'stream';
-import * as uWebsockets from 'uWebSockets.js';
+import * as uWebsockets from '@dacely-cloud/uwebsockets.js';
 import { SendableData } from './http/Response';
 import { Request } from './http/Request';
 import { Response } from './http/Response';
@@ -22,6 +22,16 @@ export interface ServerConstructorOptions {
         readable?: ReadableOptions;
         writable?: WritableOptions;
     };
+    /**
+     * HTTP idle timeout in seconds. Connections idle longer than this are closed.
+     * Default: 30
+     */
+    idle_timeout?: number;
+    /**
+     * HTTP response timeout in seconds. Responses taking longer than this during backpressure are closed.
+     * Default: 30
+     */
+    response_timeout?: number;
 }
 
 export type GlobalErrorHandler = (request: Request, response: Response, error: Error) => void;
@@ -142,4 +152,46 @@ export class Server extends Router {
      * @returns {HostManager}
      */
     get hosts(): HostManager;
+
+    /* HTTP Timeout Configuration */
+
+    /**
+     * Sets the HTTP idle timeout in seconds.
+     * Connections idle longer than this will be closed.
+     * @param {number} seconds Timeout in seconds
+     * @returns {Server} Returns this for chaining
+     */
+    setIdleTimeout(seconds: number): this;
+
+    /**
+     * Sets the HTTP response timeout in seconds.
+     * Responses taking longer than this during backpressure will be closed.
+     * @param {number} seconds Timeout in seconds
+     * @returns {Server} Returns this for chaining
+     */
+    setResponseTimeout(seconds: number): this;
+
+    /**
+     * Gets the current HTTP idle timeout in seconds.
+     * @returns {number}
+     */
+    getIdleTimeout(): number;
+
+    /**
+     * Gets the current HTTP response timeout in seconds.
+     * @returns {number}
+     */
+    getResponseTimeout(): number;
+
+    /**
+     * HTTP idle timeout in seconds.
+     * @returns {number}
+     */
+    get idle_timeout(): number;
+
+    /**
+     * HTTP response timeout in seconds.
+     * @returns {number}
+     */
+    get response_timeout(): number;
 }

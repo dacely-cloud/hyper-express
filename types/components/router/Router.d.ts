@@ -2,7 +2,7 @@ import { ReadableOptions } from 'stream';
 import { Request } from '../http/Request';
 import { Response } from '../http/Response';
 import { Websocket } from '../ws/Websocket';
-import { CompressOptions } from 'uWebSockets.js';
+import { CompressOptions } from '@dacely-cloud/uwebsockets.js';
 import { MiddlewareHandler } from '../middleware/MiddlewareHandler';
 
 // Define types for HTTP Route Creators

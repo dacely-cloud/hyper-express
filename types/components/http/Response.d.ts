@@ -1,5 +1,5 @@
 import { Readable, Writable } from 'stream';
-import * as uWebsockets from 'uWebSockets.js';
+import * as uWebsockets from '@dacely-cloud/uwebsockets.js';
 import { LiveFile } from '../plugins/LiveFile';
 import { Server } from '../Server';
 import { SSEventStream } from '../plugins/SSEventStream';
