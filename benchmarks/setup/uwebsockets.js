@@ -1,4 +1,4 @@
-import uWebsockets from '@dacely-cloud/uwebsockets.js';
+import uWebsockets from '@dacely/uwebsockets.js';
 import { get_simple_html_page } from '../scenarios/simple_html_page.js';
 
 // Initialize an app instance which will be used to create the server

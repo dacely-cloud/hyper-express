@@ -1,7 +1,7 @@
 import { Readable } from 'stream';
 import { Server } from '../Server';
 import { BusboyConfig } from 'busboy';
-import { HttpRequest } from '@dacely-cloud/uwebsockets.js';
+import { HttpRequest } from '@dacely/uwebsockets.js';
 import { Options, Ranges, Result } from 'range-parser';
 import { MultipartHandler } from '../plugins/MultipartField';
 

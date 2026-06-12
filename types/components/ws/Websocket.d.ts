@@ -1,4 +1,4 @@
-import * as uWebsockets from '@dacely-cloud/uwebsockets.js';
+import * as uWebsockets from '@dacely/uwebsockets.js';
 import { EventEmitter } from "events";
 import { Readable, Writable } from 'stream';
 import TypedEmitter from 'typed-emitter';

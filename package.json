@@ -1,5 +1,5 @@
 {
-    "name": "@dacely-cloud/hyper-express",
+    "name": "@dacely/hyper-express",
     "version": "6.17.4",
     "description": "High performance Node.js webserver with a simple-to-use API powered by uWebsockets.js under the hood.",
     "main": "index.js",
@@ -41,7 +41,7 @@
     },
     "homepage": "https://github.com/dacely-cloud/hyper-express#readme",
     "dependencies": {
-        "@dacely-cloud/uwebsockets.js": "^20.57.0",
+        "@dacely/uwebsockets.js": "^20.68.1",
         "busboy": "^1.6.0",
         "cookie": "^1.1.1",
         "cookie-signature": "^1.2.2",

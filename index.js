@@ -1,7 +1,7 @@
 'use strict';
 
 // Load uWebSockets.js and fundamental Server/Router classes
-const uWebsockets = require('@dacely-cloud/uwebsockets.js');
+const uWebsockets = require('@dacely/uwebsockets.js');
 const Server = require('./src/components/Server.js');
 const Router = require('./src/components/router/Router.js');
 const Request = require('./src/components/http/Request.js');

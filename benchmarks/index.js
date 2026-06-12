@@ -2,7 +2,7 @@ import os from 'os';
 import fs from 'fs';
 import cluster from 'cluster';
 import fetch from 'node-fetch';
-import uWebsocketsJS from '@dacely-cloud/uwebsockets.js';
+import uWebsocketsJS from '@dacely/uwebsockets.js';
 import { log } from './utils.js';
 
 // Load the server instances to be benchmarked

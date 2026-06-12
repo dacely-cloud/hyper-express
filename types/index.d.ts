@@ -1,6 +1,6 @@
 import { Server } from './components/Server';
 
-export * as compressors from '@dacely-cloud/uwebsockets.js';
+export * as compressors from '@dacely/uwebsockets.js';
 export * from './components/Server';
 export * from './components/router/Router';
 export * from './components/http/Request';

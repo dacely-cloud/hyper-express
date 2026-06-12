@@ -1,5 +1,5 @@
 import { ReadableOptions, WritableOptions } from 'stream';
-import * as uWebsockets from '@dacely-cloud/uwebsockets.js';
+import * as uWebsockets from '@dacely/uwebsockets.js';
 import { SendableData } from './http/Response';
 import { Request } from './http/Request';
 import { Response } from './http/Response';

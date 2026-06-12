@@ -1,5 +1,5 @@
 'use strict';
-const uWebsockets = require('@dacely-cloud/uwebsockets.js');
+const uWebsockets = require('@dacely/uwebsockets.js');
 
 const Route = require('../router/Route.js');
 const Websocket = require('./Websocket.js');
